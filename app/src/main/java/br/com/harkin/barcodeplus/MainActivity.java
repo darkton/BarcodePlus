@@ -169,6 +169,34 @@ public class MainActivity extends AppCompatActivity {
         finish();
     }
 
+    public void displayAbout() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Sobre")
+                .setMessage("Versão: 1.0\n" +
+                        "\n" +
+                        "Desenvolvido por Darkton Hallisson (@soudarkton).\n" +
+                        "Copyright © 2023.\n" +
+                        "\n" +
+                        "Este software utiliza a licença do MIT.\n" +
+                        "\n" +
+                        "O software faz uso das seguintes bibliotecas:\n" +
+                        "\n" +
+                        "- AndroidX AppCompat: 1.6.1\n" +
+                        "- Material Components for Android: 1.10.0\n" +
+                        "- ConstraintLayout: 2.1.4\n" +
+                        "- AndroidX Navigation Fragment: 2.5.3\n" +
+                        "- AndroidX Navigation UI: 2.5.3\n" +
+                        "- JUnit: 4.13.2\n" +
+                        "- AndroidX Test JUnit: 1.1.5\n" +
+                        "- Espresso Core: 3.5.1\n" +
+                        "- Google Play Services Code Scanner: 16.1.0\n" +
+                        "- Google Gson: 2.10.1")
+                .setPositiveButton("Fechar", (dialog, which) -> {
+                    // Resposta ao botão positivo
+                })
+                .show();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
@@ -188,6 +216,10 @@ public class MainActivity extends AppCompatActivity {
                         deleteList();
                     })
                     .show();
+        }
+
+        if (item.getItemId() == R.id.about) {
+            displayAbout();
         }
 
         return super.onOptionsItemSelected(item);
