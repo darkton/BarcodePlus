@@ -1,10 +1,14 @@
 package br.com.harkin.barcodeplus;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
+import com.google.android.gms.common.moduleinstall.ModuleInstall;
+import com.google.android.gms.common.moduleinstall.ModuleInstallClient;
+import com.google.android.gms.common.moduleinstall.ModuleInstallRequest;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -17,24 +21,32 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions;
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.lang.reflect.Type;
 
 import br.com.harkin.barcodeplus.adapter.ItemAdapter;
+import br.com.harkin.barcodeplus.listener.ModuleInstallProgressListener;
 import br.com.harkin.barcodeplus.model.Item;
 
 public class MainActivity extends AppCompatActivity {
     public ItemAdapter adapter;
     List<Item> itemList = new ArrayList<>();
+
+    public GmsBarcodeScanner scanner;
+    public ModuleInstallClient moduleInstallClient;
+    public ExtendedFloatingActionButton fab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        ExtendedFloatingActionButton fab = findViewById(R.id.fab);
+        fab = findViewById(R.id.fab);
 
         ListView listView = findViewById(R.id.listView);
 
@@ -66,7 +78,28 @@ public class MainActivity extends AppCompatActivity {
                         Barcode.FORMAT_UPC_E)
                 .build();
 
-        GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(this, options);
+        scanner = GmsBarcodeScanning.getClient(this, options);
+
+        moduleInstallClient = ModuleInstall.getClient(this);
+
+        moduleInstallClient
+                .areModulesAvailable(scanner)
+                .addOnSuccessListener(
+                        response -> {
+                            if (!response.areModulesAvailable()) {
+                                Snackbar.make(fab, "Bibliotecas não instaladas, iniciando instalação...", Snackbar.LENGTH_LONG)
+                                        .setAnchorView(R.id.fab)
+                                        .setAction("Action", null).show();
+
+                                dispatchGoogleLibDownload();
+                            }
+                        })
+                .addOnFailureListener(
+                        e -> {
+                            Snackbar.make(fab, "Não foi possível prosseguir com a instalação das bibliotecas.", Snackbar.LENGTH_LONG)
+                                    .setAnchorView(R.id.fab)
+                                    .setAction("Action", null).show();
+                        });
 
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -172,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
     public void displayAbout() {
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Sobre")
-                .setMessage("Versão: 1.0\n" +
+                .setMessage("Versão: 1.1\n" +
                         "\n" +
                         "Desenvolvido por Darkton Hallisson (@soudarkton).\n" +
                         "Copyright © 2023.\n" +
@@ -190,11 +223,46 @@ public class MainActivity extends AppCompatActivity {
                         "- AndroidX Test JUnit: 1.1.5\n" +
                         "- Espresso Core: 3.5.1\n" +
                         "- Google Play Services Code Scanner: 16.1.0\n" +
-                        "- Google Gson: 2.10.1")
+                        "- Google Gson: 2.10.1\n" +
+                        "- Google Play Services Base: 18.2.0")
                 .setPositiveButton("Fechar", (dialog, which) -> {
                     // Resposta ao botão positivo
                 })
                 .show();
+    }
+
+    public void dispatchGoogleLibDownload() {
+        View customDialogView = LayoutInflater.from(this).inflate(R.layout.dialog_layout, null);
+
+        ProgressBar progressBar = customDialogView.findViewById(R.id.progressBar);
+
+        AlertDialog alertDialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Instalando bibliotecas necessárias...")
+                .setView(customDialogView)
+                .setCancelable(false)
+                .show();
+
+        ModuleInstallProgressListener progressListener = new ModuleInstallProgressListener(alertDialog, moduleInstallClient, progressBar);
+
+        ModuleInstallRequest moduleInstallRequest =
+                ModuleInstallRequest.newBuilder()
+                        .addApi(scanner)
+                        .setListener(progressListener)
+                        .build();
+
+        moduleInstallClient.installModules(moduleInstallRequest)
+                .addOnSuccessListener(response -> {
+                    if (response.areModulesAlreadyInstalled()) {
+                        Snackbar.make(fab, "Bibliotecas instaladas com sucesso.", Snackbar.LENGTH_LONG)
+                                .setAnchorView(R.id.fab)
+                                .setAction("Action", null).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Snackbar.make(fab, "Não foi possível prosseguir com a instalação das bibliotecas.", Snackbar.LENGTH_LONG)
+                            .setAnchorView(R.id.fab)
+                            .setAction("Action", null).show();
+                });
     }
 
     @Override
